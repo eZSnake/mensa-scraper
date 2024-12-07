@@ -62,7 +62,7 @@ def print_elems(elem_list, date, mensa):
 
 
 def write_to_csv(elem_list, date, mensa):
-    name = mensa + '_' + remove_items(date.text, "date") + '.csv'
+    name = './data/' + mensa + '_' + remove_items(date.text, "date") + '.csv'
     with open(name, 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=',')
         csv_writer.writerows(elem_list)

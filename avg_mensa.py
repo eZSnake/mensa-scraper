@@ -16,7 +16,7 @@ def get_avgs():
 
 def read_in_csv(mensa, dates):
     for date in dates:
-        with open(mensa + '_' + date + '.csv', newline='') as csvfile:
+        with open('./data/' + mensa + '_' + date + '.csv', newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             elem_list = []
             for row in reader:
