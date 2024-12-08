@@ -3,6 +3,7 @@ import sched
 import time
 import re
 import csv
+import git
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -12,6 +13,9 @@ from selenium.webdriver.firefox.options import Options
 mensen = ["stadtmitte", "lichtwiese"]#, "schoefferstrasse", "dieburg", "haardtring", "schoeffers"]
 # one entry per weekday to enable easier access
 days = [0, 1, 2, 3, 4]
+# git repo linking for data storage and access
+repo = git.Repo('.')
+remote = repo.remote('origin')
 
 
 # scrapes content from mensa page
@@ -21,7 +25,8 @@ def get_content(driver, mensa, day):
     )
     driver.get(page_url)
 
-    # forces all hidden elements to become visible (targeted at menus for each day since hidden by default)
+    # forces all hidden elements to become visible
+    # (targeted at menus for each day since hidden by default)
     elements = driver.find_elements(By.CSS_SELECTOR, "div.fmc-body[style='display: none;']")
     driver.execute_script("arguments[0].style = '';", elements[day])
 
@@ -74,6 +79,7 @@ def write_to_csv(elem_list, date, mensa):
     with open(name, 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=',')
         csv_writer.writerows(elem_list)
+    repo.index.add(name)
 
 
 # runs all parts of the scraper
@@ -87,14 +93,22 @@ def run_scraper():
             elem_list = sanitize_output(title, price, location)
             write_to_csv(elem_list, date, mensa)
     driver.close()
+    repo.index.commit('added this weeks data')
+    remote.fetch()
+    remote.pull()
+    try:
+        remote.push()
+    except git.exc.GitCommandError as e:
+        print(f"Error pushing to remote: {e}")
 
 
-# should run 1x per week (since the menu is for an entire week each time)
-# can be manually run by calling run_scraper()
-def run_scraper_loop(scheduler):
-    scheduler.enter(604800, 1, run_scraper_loop, (scheduler,))
-    run_scraper()
+run_scraper()
+# # should run 1x per week (since the menu is for an entire week each time)
+# # can be manually run by calling run_scraper()
+# def run_scraper_loop(scheduler):
+#     scheduler.enter(604800, 1, run_scraper_loop, (scheduler,))
+#     run_scraper()
 
-my_scheduler = sched.scheduler(time.time, time.sleep)
-my_scheduler.enter(604800, 1, run_scraper_loop, (my_scheduler,))
-my_scheduler.run()
+# my_scheduler = sched.scheduler(time.time, time.sleep)
+# my_scheduler.enter(604800, 1, run_scraper_loop, (my_scheduler,))
+# my_scheduler.run()
