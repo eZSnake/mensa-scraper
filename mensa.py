@@ -28,7 +28,7 @@ def get_content(driver, mensa, day):
     # forces all hidden elements to become visible
     # (targeted at menus for each day since hidden by default)
     elements = driver.find_elements(By.CSS_SELECTOR, "div.fmc-body[style='display: none;']")
-    driver.execute_script("arguments[0].style = '';", elements[day])
+    driver.execute_script("arguments[0].style = '';", elements[min(day, len(elements) - 1)])
 
     date = driver.find_elements(By.CSS_SELECTOR, ".fmc-day .fmc-head .light")[day]
     title = driver.find_elements(By.CLASS_NAME, "fmc-item-title")
