@@ -61,7 +61,7 @@ def remove_items(text, which):
         return re.sub(pattern, "", text)
     if which == "date":
         pattern = r"\w+\s+"
-        return re.sub(pattern, "", text)
+        return re.sub(pattern, "", text)#.replace(".", "-")
     if which == "price":
         return float(re.sub(r"[^\d.,]", "", text).replace(",", "."))
 
@@ -79,7 +79,7 @@ def write_to_csv(elem_list, date, mensa):
     with open(name, 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=',')
         csv_writer.writerows(elem_list)
-    repo.index.add(name)
+    # repo.index.add(name)
 
 
 # runs all parts of the scraper
@@ -93,13 +93,13 @@ def run_scraper():
             elem_list = sanitize_output(title, price, location)
             write_to_csv(elem_list, date, mensa)
     driver.close()
-    repo.index.commit('added this weeks data')
-    remote.fetch()
-    remote.pull()
-    try:
-        remote.push()
-    except git.exc.GitCommandError as e:
-        print(f"Error pushing to remote: {e}")
+    # repo.index.commit('added this weeks data')
+    # remote.fetch()
+    # remote.pull()
+    # try:
+    #     remote.push()
+    # except git.exc.GitCommandError as e:
+    #     print(f"Error pushing to remote: {e}")
 
 
 run_scraper()
