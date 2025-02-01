@@ -1,11 +1,14 @@
 import csv
 import re
+import datetime as dt
+import matplotlib as plt
 from os import walk
 
 
 date_pattern = r"\d{2}\.\d{2}\.\d{4}"
 mensen = ["stadtmitte", "lichtwiese"]#, "schoefferstrasse", "dieburg", "haardtring", "schoeffers"]
 all_elems = []
+dates = []
 
 
 def get_avgs():
@@ -22,6 +25,7 @@ def read_in_csv(mensa, dates):
             for row in reader:
                 # print(', '.join(row))
                 elem_list.append(row)
+                elem_list.append(date)
             all_elems.append(elem_list)
     print(all_elems)
 
@@ -41,6 +45,14 @@ def cut_out_date(text):
 
     if date_match:
         return date_match.group()
+
+
+def plot_foods():
+    plt.gca().xaxis.set_major_formatter(plt.dates.DateFormatter('$d.$m.$Y'))
+    for elem in all_elems:
+        plt.plot(elem[0], elem[-1])
+    plt.gcf().autofmt_xdate()
+    plt.show()
 
 
 get_avgs()
