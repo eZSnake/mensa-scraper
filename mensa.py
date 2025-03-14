@@ -93,7 +93,7 @@ def run_scraper():
             elem_list = sanitize_output(title, price, location)
             write_to_csv(elem_list, date, mensa)
     driver.close()
-    repo.index.commit('added this weeks data')
+    # repo.index.commit('added this weeks data')
     # remote.fetch()
     # remote.pull()
     # try:
