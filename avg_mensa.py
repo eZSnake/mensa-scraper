@@ -13,8 +13,7 @@ def get_avgs():
     for mensa in mensen:
         dates = get_dates(mensa)
         all_elems = read_in_csv(mensa, dates)
-        unique_foods = get_unique_dishes(all_elems)
-        print(len(unique_foods))
+        # unique_foods = get_unique_dishes(all_elems)
         plot_dish_prices_separate(all_elems, sorted(dates, key=lambda x: dt.datetime.strptime(x, '%d.%m.%Y').date()))
 
 

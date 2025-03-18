@@ -4,6 +4,7 @@ import time
 import re
 import csv
 import git
+import sqlite3 as sql
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -53,17 +54,17 @@ def sanitize_output(title, price, location):
 
 # removes different parts of strings using regex
 def remove_items(text, which):
-    if which == "al-ad":
-        pattern = r" \([A-Z0-9, ]+\)"
-        return re.sub(pattern, "", text)
-    if which == "dup":
-        pattern = r" - Bistro"
-        return re.sub(pattern, "", text)
-    if which == "date":
-        pattern = r"\w+\s+"
-        return re.sub(pattern, "", text)#.replace(".", "-")
     if which == "price":
         return float(re.sub(r"[^\d.,]", "", text).replace(",", "."))
+    
+    pattern = None
+    if which == "al-ad":
+        pattern = r" \([A-Z0-9, ]+\)"
+    if which == "dup":
+        pattern = r" - Bistro"
+    if which == "date":
+        pattern = r"\w+\s+"
+    return re.sub(pattern, "", text)
 
 
 # can be called to test print all elements
@@ -82,6 +83,17 @@ def write_to_csv(elem_list, date, mensa):
     # repo.index.add(name)
 
 
+def write_to_db(elem_list, date, mensa):
+    conn = sql.connect(f'{mensa}.db')
+    cursor = conn.cursor()
+    for elem in elem_list:
+        elem[0] = re.sub(r"'", "", elem[0])
+        cursor.execute(f'''INSERT INTO dish VALUES ('{elem[0]}', '{elem[1]}', '{elem[2]}', '{date.text}')''')
+    
+    conn.commit()
+    conn.close()
+
+
 # runs all parts of the scraper
 def run_scraper():
     options = Options()
@@ -92,6 +104,7 @@ def run_scraper():
             date, title, price, location = get_content(driver, mensa, day)
             elem_list = sanitize_output(title, price, location)
             write_to_csv(elem_list, date, mensa)
+            write_to_db(elem_list, date, mensa)
     driver.close()
     # repo.index.commit('added this weeks data')
     # remote.fetch()
