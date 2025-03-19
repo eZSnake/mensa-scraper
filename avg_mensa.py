@@ -3,6 +3,7 @@ import re
 import datetime as dt
 import matplotlib.pyplot as plt
 from os import walk
+import sqlite3 as sql
 
 
 date_pattern = r"\d{2}\.\d{2}\.\d{4}"
@@ -11,8 +12,10 @@ mensen = ["stadtmitte", "lichtwiese"]#, "schoefferstrasse", "dieburg", "haardtri
 
 def get_avgs():
     for mensa in mensen:
-        dates = get_dates(mensa)
-        all_elems = read_in_csv(mensa, dates)
+        # dates = get_dates(mensa)
+        # all_elems_csv = read_in_csv(mensa, dates)
+        all_elems = read_in_db(mensa)
+        dates = [item[3] for item in all_elems]
         # unique_foods = get_unique_dishes(all_elems)
         plot_dish_prices_separate(all_elems, sorted(dates, key=lambda x: dt.datetime.strptime(x, '%d.%m.%Y').date()))
 
@@ -29,10 +32,20 @@ def read_in_csv(mensa, dates):
                 all_elems.append([elem_list[0][0],
                                   elem_list[0][1],
                                   elem_list[0][2],
-                                  dt.datetime.strptime(elem_list[1], '%d.%m.%Y')])
-                                #   elem_list[1]])
+                                  elem_list[1]])
 
     return all_elems
+
+
+def read_in_db(mensa):
+    conn = sql.connect('mensa.db')
+    cursor = conn.cursor()
+    cursor.execute(f'SELECT * FROM {mensa}')
+    all_elems = cursor.fetchall()
+    conn.commit()
+    conn.close()
+
+    return [list(tupel) for tupel in all_elems]
 
 
 def get_dates(mensa):
@@ -79,7 +92,7 @@ def plot_dish_prices_separate(nested_lists, dates):
         if dish_name not in dish_data:
             dish_data[dish_name] = {'dates': [], 'prices': []}
 
-        dish_data[dish_name]['dates'].append(date)
+        dish_data[dish_name]['dates'].append(dt.datetime.strptime(date, '%d.%m.%Y'))
         dish_data[dish_name]['prices'].append(price)
 
     # Plot the data for each dish in a separate plot

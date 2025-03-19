@@ -80,7 +80,7 @@ def write_to_csv(elem_list, date, mensa):
     with open(name, 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=',')
         csv_writer.writerows(elem_list)
-    # repo.index.add(name)
+    repo.index.add(name)
 
 
 def write_to_db(elem_list, date, mensa):
@@ -106,6 +106,7 @@ def run_scraper():
             write_to_csv(elem_list, date, mensa)
             write_to_db(elem_list, date, mensa)
     driver.close()
+    repo.git.add(update=True)
     repo.index.commit('added this weeks data')
     # remote.fetch()
     # remote.pull()
