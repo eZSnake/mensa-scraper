@@ -106,7 +106,7 @@ def run_scraper():
             write_to_csv(elem_list, date, mensa)
             write_to_db(elem_list, date, mensa)
     driver.close()
-    # repo.index.commit('added this weeks data')
+    repo.index.commit('added this weeks data')
     # remote.fetch()
     # remote.pull()
     # try:
