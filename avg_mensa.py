@@ -30,6 +30,7 @@ def read_in_csv(mensa, dates):
                                   elem_list[0][1],
                                   elem_list[0][2],
                                   dt.datetime.strptime(elem_list[1], '%d.%m.%Y')])
+                                #   elem_list[1]])
 
     return all_elems
 

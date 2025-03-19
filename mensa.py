@@ -84,11 +84,11 @@ def write_to_csv(elem_list, date, mensa):
 
 
 def write_to_db(elem_list, date, mensa):
-    conn = sql.connect(f'{mensa}.db')
+    conn = sql.connect('mensa.db')
     cursor = conn.cursor()
     for elem in elem_list:
         elem[0] = re.sub(r"'", "", elem[0])
-        cursor.execute(f'''INSERT INTO dish VALUES ('{elem[0]}', '{elem[1]}', '{elem[2]}', '{date.text}')''')
+        cursor.execute(f'''INSERT INTO {mensa} VALUES ('{elem[0]}', '{elem[1]}', '{elem[2]}', '{date.text}')''')
     
     conn.commit()
     conn.close()
