@@ -1,43 +1,29 @@
-import csv
-import re
 import datetime as dt
 import matplotlib.pyplot as plt
-from os import walk
 import sqlite3 as sql
 
 
-date_pattern = r"\d{2}\.\d{2}\.\d{4}"
 mensen = ["stadtmitte", "lichtwiese"]#, "schoefferstrasse", "dieburg", "haardtring", "schoeffers"]
 
 
-def get_avgs():
+def plot():
+    '''
+    Plots the price of each dish over time in separate plots.
+    '''
     for mensa in mensen:
-        # dates = get_dates(mensa)
-        # all_elems_csv = read_in_csv(mensa, dates)
         all_elems = read_in_db(mensa)
         dates = [item[3] for item in all_elems]
         # unique_foods = get_unique_dishes(all_elems)
         plot_dish_prices_separate(all_elems, sorted(dates, key=lambda x: dt.datetime.strptime(x, '%d.%m.%Y').date()))
 
 
-def read_in_csv(mensa, dates):
-    all_elems = []
-    for date in dates:
-        with open('./data/' + mensa + '_' + date + '.csv', newline='') as csvfile:
-            reader = csv.reader(csvfile, delimiter=',')
-            for row in reader:
-                elem_list = []
-                elem_list.append(row)
-                elem_list.append(date)
-                all_elems.append([elem_list[0][0],
-                                  elem_list[0][1],
-                                  elem_list[0][2],
-                                  elem_list[1]])
-
-    return all_elems
-
-
 def read_in_db(mensa):
+    '''
+    Reads in the data from the database.
+    
+    Args:
+        mensa: The mensa location to read in the data from.
+    '''
     conn = sql.connect('mensa.db')
     cursor = conn.cursor()
     cursor.execute(f'SELECT * FROM {mensa}')
@@ -48,24 +34,14 @@ def read_in_db(mensa):
     return [list(tupel) for tupel in all_elems]
 
 
-def get_dates(mensa):
-    dates = []
-    filenames = next(walk('./data/'), (None, None, []))[2]
-    for filename in filenames:
-        if filename.startswith(mensa):
-            dates.append(cut_out_date(filename))
-
-    return dates
-
-
-def cut_out_date(text):
-    date_match = re.search(date_pattern, text)
-
-    if date_match:
-        return date_match.group()
-
-
 def get_unique_dishes(all_elems):
+    '''
+    Returns a list of unique dishes from the data.
+    
+    Args:
+        all_elems: A list of lists, where each list has the format
+                   ['dish_name', 'price', 'location', 'date]
+    '''
     unique_dishes = set()
     for dish_info in all_elems:
         dish_name = dish_info[0]
@@ -110,4 +86,4 @@ def plot_dish_prices_separate(nested_lists, dates):
         plt.show()
 
 
-get_avgs()
+plot()

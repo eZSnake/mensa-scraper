@@ -2,7 +2,6 @@
 import sched
 import time
 import re
-import csv
 import git
 import sqlite3 as sql
 from selenium import webdriver
@@ -19,8 +18,15 @@ repo = git.Repo('.')
 remote = repo.remote('origin')
 
 
-# scrapes content from mensa page
 def get_content(driver, mensa, day):
+    '''
+    Scrapes content from mensa page.
+    
+    Args:
+        driver: The webdriver object.
+        mensa: The mensa location to scrape.
+        day: The day of the week to scrape.
+    '''
     page_url = (
         "https://studierendenwerkdarmstadt.de/hochschulgastronomie/speisen/" + mensa + "/"
     )
@@ -39,8 +45,15 @@ def get_content(driver, mensa, day):
     return date, title, price, location
 
 
-# creates a clean list of data
 def sanitize_output(title, price, location):
+    '''
+    Creates a clean list of data
+    
+    Args:
+        title: The dish name.
+        price: The dish price.
+        location: The dish location (ie mensa).
+    '''
     elem_list = []
 
     for i in range(len(title)):
@@ -52,8 +65,10 @@ def sanitize_output(title, price, location):
     return elem_list
 
 
-# removes different parts of strings using regex
 def remove_items(text, which):
+    '''
+    Eemoves different parts of strings using regex
+    '''
     if which == "price":
         return float(re.sub(r"[^\d.,]", "", text).replace(",", "."))
     
@@ -67,23 +82,10 @@ def remove_items(text, which):
     return re.sub(pattern, "", text)
 
 
-# can be called to test print all elements
-def print_elems(elem_list, date, mensa):
-    print(mensa)
-    print(date.text)
-    print(elem_list)
-
-
-# writes all data to a csv file for storage/further analysis
-def write_to_csv(elem_list, date, mensa):
-    name = './data/' + mensa + '_' + remove_items(date.text, "date") + '.csv'
-    with open(name, 'w', newline='') as csvfile:
-        csv_writer = csv.writer(csvfile, delimiter=',')
-        csv_writer.writerows(elem_list)
-    repo.index.add(name)
-
-
 def write_to_db(elem_list, date, mensa):
+    '''
+    Writes all data to a db file for storage/further analysis
+    '''
     conn = sql.connect('mensa.db')
     cursor = conn.cursor()
     for elem in elem_list:
@@ -94,8 +96,10 @@ def write_to_db(elem_list, date, mensa):
     conn.close()
 
 
-# runs all parts of the scraper
 def run_scraper():
+    '''
+    Runs all parts of the scraper
+    '''
     options = Options()
     options.add_argument('--headless')
     driver = webdriver.Firefox(options=options)
@@ -103,7 +107,6 @@ def run_scraper():
         for day in days:
             date, title, price, location = get_content(driver, mensa, day)
             elem_list = sanitize_output(title, price, location)
-            # write_to_csv(elem_list, date, mensa)
             write_to_db(elem_list, date, mensa)
     driver.close()
     repo.git.add(update=True)
