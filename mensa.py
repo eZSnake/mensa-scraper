@@ -103,7 +103,7 @@ def run_scraper():
         for day in days:
             date, title, price, location = get_content(driver, mensa, day)
             elem_list = sanitize_output(title, price, location)
-            write_to_csv(elem_list, date, mensa)
+            # write_to_csv(elem_list, date, mensa)
             write_to_db(elem_list, date, mensa)
     driver.close()
     repo.git.add(update=True)
