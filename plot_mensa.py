@@ -86,4 +86,4 @@ def plot_dish_prices_separate(nested_lists, dates):
         plt.show()
 
 
-plot()
+# plot()
