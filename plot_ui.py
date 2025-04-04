@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Mensa dish price comparison")
-        self.setGeometry(100, 100, 1000, 600)
+        self.setGeometry(100, 100, 1500, 800)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         self.custom_date.setCheckable(True)
         self.custom_date.setChecked(False)
         self.custom_date_layout = QFormLayout(self.custom_date)
-        self.custom_date_layout.addWidget(QLabel("Please input dates in the format 'DD/MM/YYYY'"))
+        self.custom_date_layout.addWidget(QLabel("Please input dates in the format 'DD.MM.YYYY'"))
         self.custom_date_layout.addWidget(QLabel("Start date"))
         self.start_date = QLineEdit()
         self.custom_date_layout.addWidget(self.start_date)
@@ -51,17 +51,18 @@ class MainWindow(QMainWindow):
         self.custom_date_layout.addWidget(self.end_date)
         options_layout.addWidget(self.custom_date)
 
-        options_layout.addStretch(1)  # Add vertical stretch to push widgets to the top
+        options_layout.addStretch(1)
         self.apply_button = QPushButton("Apply")
         options_layout.addWidget(self.apply_button)
 
         main_layout.addWidget(options_panel)
 
-        self.liwi = []
-        self.stami = []
-        self.liwi_dishes = []
-        self.stami_dishes = []
+        self.mensa = []
+        self.mensa_dishes = []
+        self.dates = []
         self.read_in_db()
+        self.update_dish_select()
+
         # Plotting Area
         plotting_area = QWidget()
         plotting_layout = QVBoxLayout()
@@ -77,73 +78,65 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(plotting_area)
 
-        # Connect the Apply button to the update plot function
+        self.mensa_select.currentIndexChanged.connect(self.update_dish_select)
         self.apply_button.clicked.connect(self.update_plot)
 
-        # Set some stretch factors to control the size of the panels
         main_layout.setStretchFactor(options_panel, 1)
         main_layout.setStretchFactor(plotting_area, 3)
 
-        self.plot_example()
-
-    def plot_example(self):
-        # Example plotting code
-        x = [1, 2, 3, 4, 5]
-        y = [2, 4, 1, 5, 3]
-        self.axes.clear()
-        self.axes.plot(x, y)
-        self.axes.set_title('Example Plot')
-        self.canvas.draw()
-
-    def update_plot(self, nested_lists, dates):
+    def update_plot(self):
         """Updates the plot based on the current values in the option widgets."""
-        mensa = self.mensa_select.currentData()
-        data = []
-        if mensa == "Lichtwiese":
-            data = self.liwi
+        data = self.mensa[self.mensa_select.currentIndex()]
+        dish_to_disp = self.dish_select.currentText()
+
+        if self.custom_date.isChecked():
+            dates = [dt.datetime.strptime(self.start_date, '%d.%m.%Y').date(),
+                     dt.datetime.strptime(self.end_date, '%d.%m.%Y').date()]
         else:
-            data = self.stami
+            dates = self.dates
 
-        dish_data = {}  # Dictionary to store data for each dish
+        dish_data = {}
 
-        for nested_list in nested_lists:
+        for nested_list in data:
             dish_name = nested_list[0]
-            price = float(nested_list[1])
-            date = nested_list[3]
+            if dish_name == dish_to_disp:
+                price = float(nested_list[1])
+                date = nested_list[3]
 
-            if dish_name not in dish_data:
-                dish_data[dish_name] = {'dates': [], 'prices': []}
+                if dish_name not in dish_data:
+                    dish_data[dish_name] = {'dates': [], 'prices': []}
 
-            dish_data[dish_name]['dates'].append(dt.datetime.strptime(date, '%d.%m.%Y'))
-            dish_data[dish_name]['prices'].append(price)
+                dish_data[dish_name]['dates'].append(dt.datetime.strptime(date, '%d.%m.%Y'))
+                dish_data[dish_name]['prices'].append(price)
 
-        # Plot the data for each dish in a separate plot
         for dish_name, data in dish_data.items():
             self.axes.clear()
             self.axes.plot(data['dates'], data['prices'], marker='o')
-            self.axes.xlabel('Date')
-            self.axes.xlim(dt.datetime.strptime(dates[0], '%d.%m.%Y'),
-                    dt.datetime.strptime(dates[-1], '%d.%m.%Y'))
-            self.axes.ylabel('Price (in €)')
-            self.axes.title(f'{dish_name}')
+            self.axes.xaxis.set_label('Date')
+            self.axes.set_xlim(dt.datetime.strptime(dates[0], '%d.%m.%Y'),
+                               dt.datetime.strptime(dates[-1], '%d.%m.%Y'))
+            self.axes.yaxis.set_label('Price (in €)')
+            self.axes.set_title(f'{dish_name}')
             self.axes.grid(True)
-            self.axes.xticks(rotation=45)
-            self.axes.tight_layout()
-            # self.axes.show()
+            # need to rotate x ticks so they are readable
+            # self.axes.xaxis.set_ticks(rotation=45)
+            self.axes.set_in_layout(Figure.tight_layout)
             self.canvas.draw()
 
     def read_in_db(self):
         conn = sql.connect('mensa.db')
         cursor = conn.cursor()
-        for mensa in mensen:
-            cursor.execute(f'SELECT * FROM {mensa}')
+
+        for i in range(len(mensen)):
+            cursor.execute(f'SELECT * FROM {mensen[i]}')
             all_elems = cursor.fetchall()
-            if mensa == "lichtwiese":
-                self.liwi = [list(tupel) for tupel in all_elems]
-                self.liwi_dishes = self.set_unique_dishes(all_elems)
-            else:
-                self.stami = [list(tupel) for tupel in all_elems]
-                self.stami_dishes = self.set_unique_dishes(all_elems)
+
+            self.mensa.append([list(tupel) for tupel in all_elems])
+            self.mensa_dishes.append(self.set_unique_dishes(all_elems))
+
+        self.dates = sorted([item[3] for item in all_elems],
+                            key=lambda x: dt.datetime.strptime(x, '%d.%m.%Y').date())
+
         conn.commit()
         conn.close()
 
@@ -154,6 +147,10 @@ class MainWindow(QMainWindow):
             unique_dishes.add(dish_name)
 
         return list(unique_dishes)
+
+    def update_dish_select(self):
+        self.dish_select.clear()
+        self.dish_select.addItems(self.mensa_dishes[self.mensa_select.currentIndex()])
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
