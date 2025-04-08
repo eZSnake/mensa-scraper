@@ -13,6 +13,7 @@ mensen = ["Stadtmitte", "Lichtwiese"]#, "Schoefferstrasse", "Dieburg", "Haardtri
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        '''Creates UI to visualize data'''
         super().__init__()
 
         self.setWindowTitle("Mensa dish price visualizer")
@@ -87,7 +88,7 @@ class MainWindow(QMainWindow):
         main_layout.setStretchFactor(plotting_area, 3)
 
     def update_plot(self):
-        """Updates the plot based on the current values in the option widgets."""
+        '''Updates the plot based on the current values in the option widgets'''
         data = self.mensa[self.mensa_select.currentIndex()]
         dish_to_disp = self.dish_select.currentText()
 
@@ -131,6 +132,7 @@ class MainWindow(QMainWindow):
         self.canvas.draw()
 
     def read_in_db(self):
+        '''Reads in data from database'''
         conn = sql.connect('mensa.db')
         cursor = conn.cursor()
 
@@ -148,6 +150,7 @@ class MainWindow(QMainWindow):
         conn.close()
 
     def set_unique_dishes(self, all_elems):
+        '''Gathers list of unique dishes'''
         unique_dishes = set()
         for dish_info in all_elems:
             dish_name = dish_info[0]
@@ -156,6 +159,7 @@ class MainWindow(QMainWindow):
         return sorted(list(unique_dishes))
 
     def update_dish_select(self):
+        '''Updates the dishes displayed in dropdown to correspond to the selected Mensa location'''
         self.dish_select.clear()
         self.dish_select.addItems(self.mensa_dishes[self.mensa_select.currentIndex()])
 

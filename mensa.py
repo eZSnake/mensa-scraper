@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
-import sched
-import time
 import re
 import git
 import sqlite3 as sql
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
-
 
 # choose which mensa menu to scrape
 mensen = ["stadtmitte", "lichtwiese"]#, "schoefferstrasse", "dieburg", "haardtring", "schoeffers"]
@@ -16,7 +12,6 @@ days = [0, 1, 2, 3, 4]
 # git repo linking for data storage and access
 repo = git.Repo('.')
 remote = repo.remote('origin')
-
 
 def get_content(driver, mensa, day):
     '''
@@ -44,7 +39,6 @@ def get_content(driver, mensa, day):
 
     return date, title, price, location
 
-
 def sanitize_output(title, price, location):
     '''
     Creates a clean list of data
@@ -56,7 +50,7 @@ def sanitize_output(title, price, location):
     '''
     elem_list = []
 
-    for i in range(len(title)):
+    for i, _ in enumerate(title):
         if title[i].text != "":
             elem_list.append([remove_items(title[i].text, "al-ad"),
                               remove_items(price[i].text, "price"),
@@ -64,14 +58,13 @@ def sanitize_output(title, price, location):
 
     return elem_list
 
-
 def remove_items(text, which):
     '''
     Eemoves different parts of strings using regex
     '''
     if which == "price":
         return float(re.sub(r"[^\d.,]", "", text).replace(",", "."))
-    
+
     pattern = None
     if which == "al-ad":
         pattern = r" \([A-Z0-9, ]+\)"
@@ -80,7 +73,6 @@ def remove_items(text, which):
     if which == "date":
         pattern = r"\w+\s+"
     return re.sub(pattern, "", text)
-
 
 def write_to_db(elem_list, date, mensa):
     '''
@@ -91,10 +83,9 @@ def write_to_db(elem_list, date, mensa):
     for elem in elem_list:
         elem[0] = re.sub(r"'", "", elem[0])
         cursor.execute(f'''INSERT INTO {mensa} VALUES ('{elem[0]}', '{elem[1]}', '{elem[2]}', '{date.text}')''')
-    
+
     conn.commit()
     conn.close()
-
 
 def run_scraper():
     '''
@@ -111,21 +102,11 @@ def run_scraper():
     driver.close()
     repo.git.add(update=True)
     repo.index.commit('added this weeks data')
-    # remote.fetch()
-    # remote.pull()
-    # try:
-    #     remote.push()
-    # except git.exc.GitCommandError as e:
-    #     print(f"Error pushing to remote: {e}")
-
+    remote.fetch()
+    remote.pull()
+    try:
+        remote.push()
+    except git.exc.GitCommandError as e:
+        print(f"Error pushing to remote: {e}")
 
 run_scraper()
-# # should run 1x per week (since the menu is for an entire week each time)
-# # can be manually run by calling run_scraper()
-# def run_scraper_loop(scheduler):
-#     scheduler.enter(604800, 1, run_scraper_loop, (scheduler,))
-#     run_scraper()
-
-# my_scheduler = sched.scheduler(time.time, time.sleep)
-# my_scheduler.enter(604800, 1, run_scraper_loop, (my_scheduler,))
-# my_scheduler.run()
