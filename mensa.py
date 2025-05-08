@@ -23,8 +23,7 @@ def get_content(driver, mensa, day):
         day: The day of the week to scrape.
     '''
     page_url = (
-        "https://studierendenwerkdarmstadt.de/hochschulgastronomie/speisen/" + mensa + "/"
-    )
+        "https://studierendenwerkdarmstadt.de/hochschulgastronomie/speisen/" + mensa + "/")
     driver.get(page_url)
 
     # forces all hidden elements to become visible
@@ -60,7 +59,7 @@ def sanitize_output(title, price, location):
 
 def remove_items(text, which):
     '''
-    Eemoves different parts of strings using regex
+    Removes different parts of strings using regex
     '''
     if which == "price":
         return float(re.sub(r"[^\d.,]", "", text).replace(",", "."))
@@ -82,7 +81,9 @@ def write_to_db(elem_list, date, mensa):
     cursor = conn.cursor()
     for elem in elem_list:
         elem[0] = re.sub(r"'", "", elem[0])
-        cursor.execute(f'''INSERT INTO {mensa} VALUES ('{elem[0]}', '{elem[1]}', '{elem[2]}', '{date.text}')''')
+        cursor.execute(f'''INSERT INTO {mensa} VALUES ('
+                       {elem[0]}', '{elem[1]}', '
+                       {elem[2]}', '{date.text}')''')
 
     conn.commit()
     conn.close()
