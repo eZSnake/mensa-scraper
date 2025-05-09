@@ -77,7 +77,7 @@ def remove_items(text, which):
         pattern = r" - Bistro"
     if which == "date":
         pattern = r"\w+\s+"
-    return re.sub(pattern, "", text)
+    return re.sub(pattern, "", text).lstrip()
 
 def write_to_db(elem_list, date, mensa):
     '''
