@@ -77,7 +77,7 @@ def remove_items(text, which):
         pattern = r" - Bistro"
     if which == "date":
         pattern = r"\w+\s+"
-    return re.sub(pattern, "", text).lstrip()
+    return re.sub(pattern, "", text)
 
 def write_to_db(elem_list, date, mensa):
     '''
@@ -101,11 +101,12 @@ def run_scraper():
             date, title, price, location = get_content(mensa, day)
             elem_list = sanitize_output(title, price, location)
             write_to_db(elem_list, date, mensa)
+    
     repo.git.add(update=True)
     repo.index.commit('added this weeks data')
-    remote.fetch()
-    remote.pull()
     try:
+        remote.fetch()
+        remote.pull()
         remote.push()
     except git.exc.GitCommandError as e:
         print(f"Error pushing to remote: {e}")
