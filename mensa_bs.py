@@ -1,5 +1,6 @@
-import re
+import os
 import git
+import re
 import sqlite3 as sql
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
@@ -8,6 +9,9 @@ from bs4 import BeautifulSoup
 mensen = ["stadtmitte", "lichtwiese"]#, "schoefferstrasse", "dieburg", "haardtring", "schoeffers"]
 # one entry per weekday to enable easier access
 days = [0, 1, 2, 3, 4]
+# specify ssh key to use (no i will not be uploading the private key)
+git_ssh_identity_file = os.path.expanduser('~/.ssh/git')
+git_ssh_cmd = 'ssh -i %s' % git_ssh_identity_file
 # git repo linking for data storage and access
 repo = git.Repo('.')
 remote = repo.remote('origin')
@@ -101,13 +105,14 @@ def run_scraper():
             date, title, price, location = get_content(mensa, day)
             elem_list = sanitize_output(title, price, location)
             write_to_db(elem_list, date, mensa)
-    
+
     repo.git.add(update=True)
     repo.index.commit('added this weeks data')
     try:
-        remote.fetch()
-        remote.pull()
-        remote.push()
+        with repo.git.custom_environment(GIT_SSH_COMMAND=git_ssh_cmd):
+            remote.fetch()
+            remote.pull()
+            remote.push()
     except git.exc.GitCommandError as e:
         print(f"Error pushing to remote: {e}")
 
