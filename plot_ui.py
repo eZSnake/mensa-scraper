@@ -113,20 +113,27 @@ class MainWindow(QMainWindow):
 
         self.axes.clear()
 
+        if not dish_data:
+            self.axes.set_title('No data to display')
+            self.canvas.draw()
+            return
+
         for dish_name, data in dish_data.items():
             self.axes.plot(data['dates'], data['prices'], marker='o')
 
-        self.axes.xaxis.set_label('Date')
+        self.axes.set_xlabel('Date')
         self.axes.set_xlim(dt.datetime.strptime(dates[0], '%d.%m.%Y'),
                            dt.datetime.strptime(dates[-1], '%d.%m.%Y'))
-        self.axes.yaxis.set_label('Price (in €)')
+        self.axes.set_ylabel('Price (in €)')
         self.axes.set_title(f'{dish_name}')
         self.axes.grid(True)
         self.axes.tick_params(axis='x', labelrotation=45)
-        self.axes.set_in_layout(Figure.tight_layout)
+
+        # Use tight_layout on the figure, not axes
+        self.axes.figure.tight_layout()
 
         # attempting to show data for each data point when hovering over it
-        cursor = mplcursors.cursor(multiple=True) #hover=mplcursors.HoverMode.Transient
+        cursor = mplcursors.cursor(self.axes, multiple=True)
         cursor.connect("add", lambda sel: sel.annotation.set_backgroundcolor('pink'))
 
         self.canvas.draw()
