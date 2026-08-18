@@ -34,8 +34,15 @@ def get_content(mensa, day):
 
     soup = BeautifulSoup(page_html, 'html.parser')
 
-    date = soup.select(".fmc-day .fmc-head .light")[day].text.strip()
+    day_headers = soup.select(".fmc-day .fmc-head .light")
+    if day >= len(day_headers):
+        # mensa page has fewer days than expected this week (e.g. a public holiday)
+        return None, None, None, None
+
+    date = day_headers[day].text.strip()
     date_span = soup.find('span', class_='light', string=date)
+    if date_span is None:
+        return None, None, None, None
     data_span = date_span.find_parent('section', class_='fmc-day')
     title = get_data(data_span, 'fmc-item-title')
     price = get_data(data_span, 'fmc-item-price')
@@ -90,8 +97,7 @@ def write_to_db(elem_list, date, mensa):
     conn = sql.connect('mensa.db')
     cursor = conn.cursor()
     for elem in elem_list:
-        elem[0] = re.sub(r"'", "", elem[0])
-        cursor.execute(f'''INSERT INTO {mensa} VALUES ('{elem[0]}', '{elem[1]}', '{elem[2]}', '{date}')''')
+        cursor.execute(f'INSERT INTO {mensa} VALUES (?, ?, ?, ?)', (elem[0], elem[1], elem[2], date))
 
     conn.commit()
     conn.close()
@@ -103,6 +109,8 @@ def run_scraper():
     for mensa in mensen:
         for day in days:
             date, title, price, location = get_content(mensa, day)
+            if date is None:
+                continue
             elem_list = sanitize_output(title, price, location)
             write_to_db(elem_list, date, mensa)
 
