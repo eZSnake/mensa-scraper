@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mensa Prices</title>
+<link rel="icon" href="/logo.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  :root { --bg: #f6f6f4; --card: #fff; --text: #1d1d1b; --muted: #6b6b66; --line: #e2e2dd; --accent: #2f6f4f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #20201f; --text: #ececea; --muted: #9a9a94; --line: #33332f; --accent: #6fbf94; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  header img { width: 40px; height: 40px; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 6px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 20px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+  select, input, button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  button { cursor: pointer; }
+  input[type=search] { flex: 1; min-width: 200px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  td.price { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 12px; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { color: var(--accent); }
+  .muted { color: var(--muted); }
+  .chart-wrap { position: relative; height: 320px; }
+  .stats { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
+  .week { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .day { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .day h4 { margin: 0 0 4px; font-size: 14px; }
+  .day h4 small { color: var(--muted); font-weight: normal; }
+  .day h3 { margin-top: 10px; font-size: 11px; }
+  .day td { font-size: 13px; vertical-align: top; }
+  .day.today { border-color: var(--accent); }
+  .change { display: block; font-size: 11px; }
+  .up { color: #c0392b; } .down { color: var(--accent); }
+  .stats div span { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="/logo.png" alt="">
+    <h1>Mensa Prices</h1>
+    <select id="mensa" style="margin-left:auto">
+      {% for mensa in mensen %}<option value="{{ mensa }}">{{ mensa|capitalize }}</option>{% endfor %}
+    </select>
+  </header>
+
+  <section class="card">
+    <h2>This week <small class="muted" id="week-range"></small></h2>
+    <div id="week" class="week"></div>
+  </section>
+
+  <section class="card">
+    <h2>Browse by day</h2>
+    <div class="controls">
+      <button id="prev" title="Earlier day">&larr;</button>
+      <select id="date"></select>
+      <button id="next" title="Later day">&rarr;</button>
+    </div>
+    <div id="menu"></div>
+  </section>
+
+  <section class="card">
+    <h2>Price history</h2>
+    <div class="controls">
+      <input type="search" id="dish" list="dish-list" placeholder="Search a dish…">
+      <datalist id="dish-list"></datalist>
+    </div>
+    <div id="history" class="muted">Pick a dish above, or click one in the menu.</div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const euro = n => n.toFixed(2).replace('.', ',') + ' €';
+const toIso = d => d.split('.').reverse().join('-');
+const esc = s => s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+let chart, dishNames = new Set();
+
+async function api(path) {
+  return (await fetch(`/api/${$('mensa').value}/${path}`)).json();
+}
+
+async function loadMensa() {
+  const [dates, dishes] = await Promise.all([api('dates'), api('dishes')]);
+  $('date').innerHTML = dates.map(d => `<option>${d}</option>`).join('');
+  dishNames = new Set(dishes.map(d => d.dish));
+  $('dish-list').innerHTML = dishes.map(d => `<option value="${esc(d.dish)}"></option>`).join('');
+  loadMenu();
+  loadWeek();
+  if (dishNames.has($('dish').value)) loadHistory(); else $('history').innerHTML = 'Pick a dish above, or click one in the menu.';
+}
+
+async function loadMenu() {
+  const items = await api('menu?date=' + encodeURIComponent($('date').value));
+  const byLocation = {};
+  items.forEach(i => (byLocation[i.location] ??= []).push(i));
+  $('menu').innerHTML = Object.entries(byLocation).map(([loc, list]) =>
+    `<h3>${esc(loc)}</h3><table>` + list.map(i =>
+      `<tr class="clickable" data-dish="${esc(i.dish)}"><td>${esc(i.dish)}</td><td class="price">${euro(i.price)}</td></tr>`
+    ).join('') + '</table>'
+  ).join('') || '<p class="muted">No dishes for this day.</p>';
+  const idx = $('date').selectedIndex;
+  $('next').disabled = idx <= 0;
+  $('prev').disabled = idx >= $('date').options.length - 1;
+}
+
+const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function priceChange(i) {
+  if (i.prev_price == null) return '<span class="change muted">new</span>';
+  const diff = i.price - i.prev_price;
+  if (Math.abs(diff) < 0.005) return '';
+  return `<span class="change ${diff > 0 ? 'up' : 'down'}">${diff > 0 ? '▲' : '▼'} ${euro(Math.abs(diff))}</span>`;
+}
+
+async function loadWeek() {
+  const days = await api('week');
+  const todayIso = new Date().toISOString().slice(0, 10);
+  $('week-range').textContent = days.length ? `(${days[0].date} – ${days.at(-1).date})` : '';
+  $('week').innerHTML = days.map(day => {
+    const byLocation = {};
+    day.dishes.forEach(i => (byLocation[i.location] ??= []).push(i));
+    return `<div class="day ${toIso(day.date) === todayIso ? 'today' : ''}">
+      <h4>${weekdays[new Date(toIso(day.date)).getDay()]} <small>${day.date.slice(0, 5)}</small></h4>` +
+      Object.entries(byLocation).map(([loc, list]) => `<h3>${esc(loc)}</h3><table>` + list.map(i =>
+        `<tr class="clickable" data-dish="${esc(i.dish)}"><td>${esc(i.dish)}</td><td class="price">${euro(i.price)}${priceChange(i)}</td></tr>`
+      ).join('') + '</table>').join('') + '</div>';
+  }).join('') || '<p class="muted">No data yet.</p>';
+}
+
+async function loadHistory() {
+  const dish = $('dish').value;
+  const rows = await api('history?dish=' + encodeURIComponent(dish));
+  if (!rows.length) { $('history').innerHTML = 'No data for this dish.'; return; }
+  const prices = rows.map(r => r.price);
+  $('history').innerHTML = `
+    <div class="stats">
+      <div class="muted">Served<span style="color:var(--text)">${new Set(rows.map(r => r.date)).size}×</span></div>
+      <div class="muted">Latest<span style="color:var(--text)">${euro(prices.at(-1))}</span></div>
+      <div class="muted">Min<span style="color:var(--text)">${euro(Math.min(...prices))}</span></div>
+      <div class="muted">Max<span style="color:var(--text)">${euro(Math.max(...prices))}</span></div>
+      <div class="muted">First seen<span style="color:var(--text)">${rows[0].date}</span></div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>`;
+  const style = getComputedStyle(document.documentElement);
+  const accent = style.getPropertyValue('--accent').trim(), muted = style.getPropertyValue('--muted').trim(), line = style.getPropertyValue('--line').trim();
+  chart?.destroy();
+  chart = new Chart($('chart'), {
+    type: 'line',
+    data: { datasets: [{ label: dish, data: rows.map(r => ({ x: toIso(r.date), y: r.price, loc: r.location })),
+                         borderColor: accent, backgroundColor: accent, stepped: true, pointRadius: 3 }] },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: c => `${euro(c.parsed.y)} (${c.raw.loc})` } } },
+      scales: {
+        x: { type: 'time', time: { unit: 'month', tooltipFormat: 'dd.MM.yyyy' }, ticks: { color: muted }, grid: { color: line } },
+        y: { ticks: { color: muted, callback: v => euro(v) }, grid: { color: line } }
+      }
+    }
+  });
+}
+
+$('mensa').onchange = loadMensa;
+$('date').onchange = loadMenu;
+$('prev').onclick = () => { $('date').selectedIndex++; loadMenu(); };
+$('next').onclick = () => { $('date').selectedIndex--; loadMenu(); };
+$('dish').oninput = () => { if (dishNames.has($('dish').value)) loadHistory(); };
+$('menu').onclick = $('week').onclick = e => {
+  const row = e.target.closest('tr[data-dish]');
+  if (!row) return;
+  $('dish').value = row.dataset.dish;
+  loadHistory();
+  $('history').scrollIntoView({ behavior: 'smooth' });
+};
+loadMensa();
+</script>
+</body>
+</html>
